@@ -37,6 +37,8 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublicRoute =
     pathname.startsWith("/login") ||
+    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/redefinir-senha") ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/_next/") ||
     pathname === "/manifest.json" ||

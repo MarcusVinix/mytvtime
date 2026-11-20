@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AddToListButton } from "@/components/AddToListModal";
-import { CastSection, TrailerButton } from "@/components/MediaExtras";
+import { CastSection, RecommendationsSection, TrailerButton } from "@/components/MediaExtras";
 import {
   useMarkEpisodesUpTo,
   useRemoveShow,
@@ -487,6 +487,8 @@ export default function ShowDetailPage({
               ))}
             </div>
           </section>
+
+          <RecommendationsSection items={show.recommendations?.results} type="tv" />
         </div>
       )}
     </AppShell>

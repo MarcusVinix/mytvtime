@@ -151,6 +151,9 @@ export interface TmdbShowDetail {
   videos?: {
     results?: TmdbVideo[];
   };
+  recommendations?: {
+    results?: TmdbMediaItem[];
+  };
   "watch/providers"?: {
     results?: {
       BR?: {
@@ -180,6 +183,9 @@ export interface TmdbMovieDetail {
   };
   videos?: {
     results?: TmdbVideo[];
+  };
+  recommendations?: {
+    results?: TmdbMediaItem[];
   };
   "watch/providers"?: {
     results?: {

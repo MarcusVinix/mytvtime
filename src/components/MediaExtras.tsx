@@ -110,3 +110,36 @@ export function CastSection({ cast = [] }: { cast?: TmdbCastMember[] }) {
     </section>
   );
 }
+
+import { MediaCard } from "./MediaCard";
+import type { TmdbMediaItem } from "@/types";
+
+export function RecommendationsSection({
+  items = [],
+  type,
+}: {
+  items?: TmdbMediaItem[];
+  type: "tv" | "movie";
+}) {
+  const top = items.slice(0, 10);
+  if (top.length === 0) return null;
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-lg font-bold text-white">Títulos Parecidos</h2>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
+        {top.map((item) => (
+          <MediaCard
+            key={item.id}
+            id={item.id}
+            type={type}
+            title={item.name || item.title || "Sem título"}
+            posterPath={item.poster_path}
+            rating={item.vote_average}
+            subtitle={(item.first_air_date || item.release_date || "").slice(0, 4)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Calendar, Compass, Film, ListVideo, Tv, User } from "lucide-react";
 import { SetupBanner } from "./SetupBanner";
+import { ReleaseNotifications } from "./ReleaseNotifications";
 
 const DESKTOP_NAV = [
   { href: "/series", label: "Séries", icon: Tv },
@@ -29,17 +30,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[#0E0F12] text-[#F5F6F8]">
       {/* Desktop Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-[#232630] bg-[#121419] md:flex">
-        <Link href="/series" className="flex items-center gap-3 px-6 py-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F5C518] text-[#0E0F12] font-black shadow-lg shadow-[#F5C518]/20">
-            <Tv className="h-5 w-5" strokeWidth={2.5} />
-          </div>
-          <div>
-            <span className="text-lg font-extrabold tracking-tight text-white">
-              My<span className="text-[#F5C518]">TVTime</span>
-            </span>
-            <p className="text-[11px] text-zinc-400">Suas séries & filmes</p>
-          </div>
-        </Link>
+        <div className="flex items-center justify-between px-5 py-6">
+          <Link href="/series" className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F5C518] text-[#0E0F12] font-black shadow-lg shadow-[#F5C518]/20">
+              <Tv className="h-5 w-5" strokeWidth={2.5} />
+            </div>
+            <div>
+              <span className="text-lg font-extrabold tracking-tight text-white">
+                My<span className="text-[#F5C518]">TVTime</span>
+              </span>
+              <p className="text-[11px] text-zinc-400">Suas séries & filmes</p>
+            </div>
+          </Link>
+          <ReleaseNotifications />
+        </div>
 
         <nav className="mt-2 flex-1 space-y-1 px-3">
           {DESKTOP_NAV.map((item) => {
@@ -78,17 +82,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </span>
         </Link>
 
-        <Link
-          href="/listas"
-          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors ${
-            pathname.startsWith("/listas")
-              ? "bg-[#F5C518] text-[#0E0F12]"
-              : "border border-[#262A34] bg-[#16181D] text-zinc-300"
-          }`}
-        >
-          <ListVideo className="h-3.5 w-3.5" />
-          Listas
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/listas"
+            className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors ${
+              pathname.startsWith("/listas")
+                ? "bg-[#F5C518] text-[#0E0F12]"
+                : "border border-[#262A34] bg-[#16181D] text-zinc-300"
+            }`}
+          >
+            <ListVideo className="h-3.5 w-3.5" />
+            Listas
+          </Link>
+          <ReleaseNotifications />
+        </div>
       </header>
 
       {/* Main Content */}
