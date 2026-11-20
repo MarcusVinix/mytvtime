@@ -2,12 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Film, Tv, User } from "lucide-react";
+import { Calendar, Compass, Film, ListVideo, Tv, User } from "lucide-react";
 import { SetupBanner } from "./SetupBanner";
 
-const NAV_ITEMS = [
+const DESKTOP_NAV = [
   { href: "/series", label: "Séries", icon: Tv },
   { href: "/filmes", label: "Filmes", icon: Film },
+  { href: "/calendario", label: "Calendário", icon: Calendar },
+  { href: "/listas", label: "Listas", icon: ListVideo },
+  { href: "/explorar", label: "Explorar", icon: Compass },
+  { href: "/perfil", label: "Perfil", icon: User },
+];
+
+const MOBILE_NAV = [
+  { href: "/series", label: "Séries", icon: Tv },
+  { href: "/filmes", label: "Filmes", icon: Film },
+  { href: "/calendario", label: "Calendário", icon: Calendar },
   { href: "/explorar", label: "Explorar", icon: Compass },
   { href: "/perfil", label: "Perfil", icon: User },
 ];
@@ -32,7 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Link>
 
         <nav className="mt-2 flex-1 space-y-1 px-3">
-          {NAV_ITEMS.map((item) => {
+          {DESKTOP_NAV.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -67,6 +77,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             My<span className="text-[#F5C518]">TVTime</span>
           </span>
         </Link>
+
+        <Link
+          href="/listas"
+          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors ${
+            pathname.startsWith("/listas")
+              ? "bg-[#F5C518] text-[#0E0F12]"
+              : "border border-[#262A34] bg-[#16181D] text-zinc-300"
+          }`}
+        >
+          <ListVideo className="h-3.5 w-3.5" />
+          Listas
+        </Link>
       </header>
 
       {/* Main Content */}
@@ -77,15 +99,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Bottom Navigation */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[#232630] bg-[#121419]/95 backdrop-blur-lg md:hidden">
-        <div className="grid grid-cols-4">
-          {NAV_ITEMS.map((item) => {
+        <div className="grid grid-cols-5">
+          {MOBILE_NAV.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center gap-1 py-2.5 text-[11px] font-medium transition-colors ${
+                className={`flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
                   active ? "text-[#F5C518]" : "text-zinc-400 hover:text-zinc-200"
                 }`}
               >

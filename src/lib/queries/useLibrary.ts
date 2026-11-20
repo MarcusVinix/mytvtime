@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type {
+  CustomList,
   MovieStatus,
   ShowStatus,
   TmdbEpisode,
@@ -18,6 +19,7 @@ export const LIBRARY_KEYS = {
   shows: ["library", "shows"] as const,
   episodes: ["library", "episodes"] as const,
   movies: ["library", "movies"] as const,
+  lists: ["library", "lists"] as const,
 };
 
 export function useCurrentUser() {
@@ -415,6 +417,177 @@ export function useRemoveMovie() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: LIBRARY_KEYS.movies });
+    },
+  });
+}
+
+export function useMarkEpisodesUpTo() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      tmdbShowId,
+      seasonNumber,
+      episodesUpTo,
+    }: {
+      tmdbShowId: number;
+      seasonNumber: number;
+      episodesUpTo: TmdbEpisode[];
+    }) => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const now = new Date().toISOString();
+      const rows = episodesUpTo.map((ep) => ({
+        user_id: user.id,
+        tmdb_show_id: tmdbShowId,
+        season_number: seasonNumber,
+        episode_number: ep.episode_number,
+        runtime_minutes: ep.runtime || 45,
+        watched_at: now,
+      }));
+
+      const { error } = await supabase.from("watched_episodes").upsert(rows, {
+        onConflict: "user_id,tmdb_show_id,season_number,episode_number",
+      });
+      if (error) throw error;
+
+      await supabase
+        .from("user_shows")
+        .update({ updated_at: now })
+        .eq("user_id", user.id)
+        .eq("tmdb_id", tmdbShowId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: LIBRARY_KEYS.episodes });
+      queryClient.invalidateQueries({ queryKey: LIBRARY_KEYS.shows });
+    },
+  });
+}
+
+export function useCustomLists() {
+  const supabase = createClient();
+  return useQuery({
+    queryKey: LIBRARY_KEYS.lists,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("custom_lists")
+        .select("*, custom_list_items(*)")
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as CustomList[];
+    },
+  });
+}
+
+export function useCreateList() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      name,
+      description,
+    }: {
+      name: string;
+      description?: string;
+    }) => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const { data, error } = await supabase
+        .from("custom_lists")
+        .insert({
+          user_id: user.id,
+          name: name.trim(),
+          description: description?.trim() || null,
+        })
+        .select("*, custom_list_items(*)")
+        .single();
+      if (error) throw error;
+      return data as CustomList;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: LIBRARY_KEYS.lists });
+    },
+  });
+}
+
+export function useDeleteList() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (listId: string) => {
+      const { error } = await supabase.from("custom_lists").delete().eq("id", listId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: LIBRARY_KEYS.lists });
+    },
+  });
+}
+
+export function useToggleListItem() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      listId,
+      mediaType,
+      tmdbId,
+      title,
+      posterPath,
+      inList,
+    }: {
+      listId: string;
+      mediaType: "tv" | "movie";
+      tmdbId: number;
+      title: string;
+      posterPath: string | null;
+      inList: boolean;
+    }) => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      if (inList) {
+        const { error } = await supabase
+          .from("custom_list_items")
+          .delete()
+          .eq("list_id", listId)
+          .eq("media_type", mediaType)
+          .eq("tmdb_id", tmdbId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("custom_list_items").upsert(
+          {
+            list_id: listId,
+            user_id: user.id,
+            media_type: mediaType,
+            tmdb_id: tmdbId,
+            title,
+            poster_path: posterPath,
+          },
+          { onConflict: "list_id,media_type,tmdb_id" }
+        );
+        if (error) throw error;
+      }
+
+      await supabase
+        .from("custom_lists")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", listId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: LIBRARY_KEYS.lists });
     },
   });
 }

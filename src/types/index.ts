@@ -89,6 +89,44 @@ export interface TmdbWatchProvider {
   logo_path: string;
 }
 
+export interface TmdbCastMember {
+  id: number;
+  name: string;
+  character: string;
+  profile_path: string | null;
+  order: number;
+}
+
+export interface TmdbVideo {
+  id: string;
+  key: string;
+  name: string;
+  site: string;
+  type: string;
+  official: boolean;
+}
+
+export interface CustomListItem {
+  id: string;
+  list_id: string;
+  user_id: string;
+  media_type: "tv" | "movie";
+  tmdb_id: number;
+  title: string;
+  poster_path: string | null;
+  added_at: string;
+}
+
+export interface CustomList {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  custom_list_items?: CustomListItem[];
+}
+
 export interface TmdbShowDetail {
   id: number;
   name: string;
@@ -107,6 +145,12 @@ export interface TmdbShowDetail {
   seasons: TmdbSeasonSummary[];
   next_episode_to_air: TmdbEpisode | null;
   last_episode_to_air: TmdbEpisode | null;
+  credits?: {
+    cast?: TmdbCastMember[];
+  };
+  videos?: {
+    results?: TmdbVideo[];
+  };
   "watch/providers"?: {
     results?: {
       BR?: {
@@ -131,6 +175,12 @@ export interface TmdbMovieDetail {
   status: string;
   vote_average: number;
   genres: { id: number; name: string }[];
+  credits?: {
+    cast?: TmdbCastMember[];
+  };
+  videos?: {
+    results?: TmdbVideo[];
+  };
   "watch/providers"?: {
     results?: {
       BR?: {

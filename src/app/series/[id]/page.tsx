@@ -11,13 +11,17 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  FastForward,
   Loader2,
   Plus,
   Star,
   Trash2,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { AddToListButton } from "@/components/AddToListModal";
+import { CastSection, TrailerButton } from "@/components/MediaExtras";
 import {
+  useMarkEpisodesUpTo,
   useRemoveShow,
   useToggleEpisode,
   useToggleSeason,
@@ -52,6 +56,7 @@ function SeasonAccordion({
   const [open, setOpen] = useState(defaultOpen);
   const toggleEpisode = useToggleEpisode();
   const toggleSeason = useToggleSeason();
+  const markUpTo = useMarkEpisodesUpTo();
 
   const { data: seasonDetail, isLoading } = useQuery<TmdbSeasonDetail>({
     queryKey: ["tmdb", "tv", tmdbShowId, "season", seasonNumber],
@@ -97,6 +102,21 @@ function SeasonAccordion({
       seasonNumber,
       episodes: seasonDetail.episodes,
       markAsWatched: !allWatched,
+    });
+  }
+
+  async function handleMarkUpTo(targetEpNumber: number) {
+    if (!seasonDetail?.episodes) return;
+    if (!isInLibrary) {
+      await onEnsureInLibrary();
+    }
+    const episodesUpTo = seasonDetail.episodes.filter(
+      (e) => e.episode_number <= targetEpNumber
+    );
+    markUpTo.mutate({
+      tmdbShowId,
+      seasonNumber,
+      episodesUpTo,
     });
   }
 
@@ -189,18 +209,33 @@ function SeasonAccordion({
                     )}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleToggleEpisode(ep.episode_number, ep.runtime, watched)}
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all ${
-                      watched
-                        ? "bg-[#F5C518] text-[#0E0F12]"
-                        : "border border-[#2E3340] bg-[#0E0F12] text-zinc-400 hover:border-[#F5C518] hover:text-[#F5C518]"
-                    }`}
-                    title={watched ? "Desmarcar episódio" : "Marcar como assistido"}
-                  >
-                    <Check className="h-4 w-4" strokeWidth={3} />
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {!watched && ep.episode_number > 1 && (
+                      <button
+                        type="button"
+                        disabled={markUpTo.isPending}
+                        onClick={() => handleMarkUpTo(ep.episode_number)}
+                        title="Marcar todos até este episódio"
+                        className="flex h-9 items-center gap-1 rounded-xl border border-[#2E3340] bg-[#0E0F12] px-2.5 text-[11px] font-semibold text-zinc-400 transition-colors hover:border-[#F5C518] hover:text-[#F5C518] disabled:opacity-50"
+                      >
+                        <FastForward className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Até aqui</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleToggleEpisode(ep.episode_number, ep.runtime, watched)}
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all ${
+                        watched
+                          ? "bg-[#F5C518] text-[#0E0F12]"
+                          : "border border-[#2E3340] bg-[#0E0F12] text-zinc-400 hover:border-[#F5C518] hover:text-[#F5C518]"
+                      }`}
+                      title={watched ? "Desmarcar episódio" : "Marcar como assistido"}
+                    >
+                      <Check className="h-4 w-4" strokeWidth={3} />
+                    </button>
+                  </div>
                 </div>
               );
             })
@@ -391,6 +426,15 @@ export default function ShowDetailPage({
                       </button>
                     </>
                   )}
+
+                  <AddToListButton
+                    mediaType="tv"
+                    tmdbId={show.id}
+                    title={show.name}
+                    posterPath={show.poster_path}
+                  />
+
+                  <TrailerButton videos={show.videos?.results} />
                 </div>
 
                 {/* Watch Providers BR */}
@@ -420,6 +464,9 @@ export default function ShowDetailPage({
               </div>
             </div>
           </div>
+
+          {/* Cast */}
+          <CastSection cast={show.credits?.cast} />
 
           {/* Seasons */}
           <section className="space-y-4">

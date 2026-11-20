@@ -14,7 +14,7 @@ export async function GET(
   try {
     const data = await tmdbFetch<TmdbMovieDetail>(
       `/movie/${id}`,
-      { append_to_response: "watch/providers" },
+      { append_to_response: "watch/providers,credits,videos" },
       1800
     );
     return NextResponse.json(data);

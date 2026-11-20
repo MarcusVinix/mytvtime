@@ -14,6 +14,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { AddToListButton } from "@/components/AddToListModal";
+import { CastSection, TrailerButton } from "@/components/MediaExtras";
 import { useRemoveMovie, useUpsertMovie, useUserMovies } from "@/lib/queries/useLibrary";
 import { formatDateBR } from "@/lib/dates";
 import { getTmdbImageUrl } from "@/lib/tmdb";
@@ -67,7 +69,8 @@ export default function MovieDetailPage({
           Erro ao carregar filme. Verifique sua chave do TMDB no <code>.env.local</code>.
         </div>
       ) : (
-        <div className="relative overflow-hidden rounded-3xl border border-[#232630] bg-[#16181D]">
+        <div className="space-y-8">
+          <div className="relative overflow-hidden rounded-3xl border border-[#232630] bg-[#16181D]">
           {movie.backdrop_path && (
             <div className="absolute inset-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -161,6 +164,15 @@ export default function MovieDetailPage({
                     Remover
                   </button>
                 )}
+
+                <AddToListButton
+                  mediaType="movie"
+                  tmdbId={movie.id}
+                  title={movie.title}
+                  posterPath={movie.poster_path}
+                />
+
+                <TrailerButton videos={movie.videos?.results} />
               </div>
 
               {providers.length > 0 && (
@@ -189,6 +201,9 @@ export default function MovieDetailPage({
             </div>
           </div>
         </div>
+
+        <CastSection cast={movie.credits?.cast} />
+      </div>
       )}
     </AppShell>
   );
