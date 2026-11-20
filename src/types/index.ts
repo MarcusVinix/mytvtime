@@ -1,5 +1,6 @@
 export type ShowStatus = "watching" | "completed" | "plan_to_watch" | "stopped";
 export type MovieStatus = "watchlist" | "watched";
+export type ReactionType = "loved" | "wow" | "funny" | "sad" | "angry";
 
 export interface UserShow {
   id: string;
@@ -13,6 +14,12 @@ export interface UserShow {
   number_of_seasons: number;
   first_air_date: string | null;
   next_episode_date: string | null;
+  rating?: number | null;
+  reaction?: ReactionType | null;
+  notes?: string | null;
+  is_favorite?: boolean;
+  rewatch_count?: number;
+  genres?: string[];
   updated_at: string;
   created_at: string;
 }
@@ -25,6 +32,8 @@ export interface WatchedEpisode {
   episode_number: number;
   runtime_minutes: number;
   rating: number | null;
+  reaction?: ReactionType | null;
+  notes?: string | null;
   watched_at: string;
 }
 
@@ -39,6 +48,11 @@ export interface UserMovie {
   status: MovieStatus;
   runtime_minutes: number;
   rating: number | null;
+  reaction?: ReactionType | null;
+  notes?: string | null;
+  is_favorite?: boolean;
+  rewatch_count?: number;
+  genres?: string[];
   watched_at: string | null;
   updated_at: string;
   created_at: string;
@@ -196,5 +210,31 @@ export interface TmdbMovieDetail {
         buy?: TmdbWatchProvider[];
       };
     };
+  };
+}
+
+export interface TmdbPersonCredit {
+  id: number;
+  media_type: "tv" | "movie";
+  title?: string;
+  name?: string;
+  character?: string;
+  poster_path: string | null;
+  vote_average: number;
+  popularity: number;
+  first_air_date?: string;
+  release_date?: string;
+}
+
+export interface TmdbPersonDetail {
+  id: number;
+  name: string;
+  biography: string;
+  birthday: string | null;
+  place_of_birth: string | null;
+  profile_path: string | null;
+  known_for_department: string;
+  combined_credits?: {
+    cast?: TmdbPersonCredit[];
   };
 }

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import type {
   CustomList,
   MovieStatus,
+  ReactionType,
   ShowStatus,
   TmdbEpisode,
   TmdbMovieDetail,
@@ -107,6 +108,7 @@ export function useUpsertShow() {
         number_of_seasons: show.number_of_seasons || 1,
         first_air_date: show.first_air_date || null,
         next_episode_date: show.next_episode_to_air?.air_date || null,
+        genres: (show.genres || []).map((g) => g.name),
         updated_at: new Date().toISOString(),
       };
 
@@ -356,6 +358,7 @@ export function useUpsertMovie() {
         release_date: movie.release_date || null,
         status,
         runtime_minutes: movie.runtime || 110,
+        genres: (movie.genres || []).map((g) => g.name),
         watched_at: status === "watched" ? now : null,
         updated_at: now,
       };
@@ -588,6 +591,114 @@ export function useToggleListItem() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: LIBRARY_KEYS.lists });
+    },
+  });
+}
+
+export function useUpdateShowMeta() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      tmdbId,
+      patch,
+      resetEpisodes = false,
+    }: {
+      tmdbId: number;
+      patch: {
+        rating?: number | null;
+        reaction?: ReactionType | null;
+        notes?: string | null;
+        is_favorite?: boolean;
+        rewatch_count?: number;
+        status?: ShowStatus;
+        genres?: string[];
+      };
+      resetEpisodes?: boolean;
+    }) => {
+      const { error } = await supabase
+        .from("user_shows")
+        .update({ ...patch, updated_at: new Date().toISOString() })
+        .eq("tmdb_id", tmdbId);
+      if (error) throw error;
+
+      if (resetEpisodes) {
+        const { error: delErr } = await supabase
+          .from("watched_episodes")
+          .delete()
+          .eq("tmdb_show_id", tmdbId);
+        if (delErr) throw delErr;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: LIBRARY_KEYS.shows });
+      queryClient.invalidateQueries({ queryKey: LIBRARY_KEYS.episodes });
+    },
+  });
+}
+
+export function useUpdateEpisodeReview() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      tmdbShowId,
+      seasonNumber,
+      episodeNumber,
+      rating,
+      reaction,
+      notes,
+    }: {
+      tmdbShowId: number;
+      seasonNumber: number;
+      episodeNumber: number;
+      rating?: number | null;
+      reaction?: ReactionType | null;
+      notes?: string | null;
+    }) => {
+      const { error } = await supabase
+        .from("watched_episodes")
+        .update({ rating, reaction, notes })
+        .eq("tmdb_show_id", tmdbShowId)
+        .eq("season_number", seasonNumber)
+        .eq("episode_number", episodeNumber);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: LIBRARY_KEYS.episodes });
+    },
+  });
+}
+
+export function useUpdateMovieMeta() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      tmdbId,
+      patch,
+    }: {
+      tmdbId: number;
+      patch: {
+        rating?: number | null;
+        reaction?: ReactionType | null;
+        notes?: string | null;
+        is_favorite?: boolean;
+        rewatch_count?: number;
+        genres?: string[];
+      };
+    }) => {
+      const { error } = await supabase
+        .from("user_movies")
+        .update({ ...patch, updated_at: new Date().toISOString() })
+        .eq("tmdb_id", tmdbId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: LIBRARY_KEYS.movies });
     },
   });
 }

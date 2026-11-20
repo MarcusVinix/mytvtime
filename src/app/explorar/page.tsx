@@ -24,6 +24,14 @@ const STREAMING_PROVIDERS = [
   { id: "531", label: "Paramount+" },
 ];
 
+const ORIGIN_FILTERS = [
+  { id: "", label: "Qualquer origem" },
+  { id: "dorama", label: "Doramas (Todos)" },
+  { id: "ko", label: "K-Dramas (Coreia)" },
+  { id: "ja", label: "J-Dramas (Japão)" },
+  { id: "zh", label: "C-Dramas (China)" },
+];
+
 const TV_GENRES = [
   { id: "", label: "Todos os gêneros" },
   { id: "10759", label: "Ação e Aventura" },
@@ -55,6 +63,7 @@ export default function ExplorarPage() {
   const [discoverType, setDiscoverType] = useState<"tv" | "movie">("tv");
   const [provider, setProvider] = useState("");
   const [genre, setGenre] = useState("");
+  const [origin, setOrigin] = useState("");
   const [sort, setSort] = useState("popularity.desc");
 
   useEffect(() => {
@@ -62,7 +71,7 @@ export default function ExplorarPage() {
     return () => clearTimeout(t);
   }, [query]);
 
-  const hasFilters = Boolean(provider || genre || sort !== "popularity.desc");
+  const hasFilters = Boolean(provider || genre || origin || sort !== "popularity.desc");
 
   const { data: searchData, isLoading: searchLoading } = useQuery<{ results: TmdbMediaItem[] }>({
     queryKey: ["tmdb", "search", debouncedQuery],
@@ -75,12 +84,13 @@ export default function ExplorarPage() {
   });
 
   const { data: discoverData, isLoading: discoverLoading } = useQuery<{ results: TmdbMediaItem[] }>({
-    queryKey: ["tmdb", "discover", discoverType, provider, genre, sort],
+    queryKey: ["tmdb", "discover", discoverType, provider, genre, origin, sort],
     queryFn: async () => {
       const params = new URLSearchParams({
         type: discoverType,
         provider,
         genre,
+        origin,
         sort,
       });
       const res = await fetch(`/api/tmdb/discover?${params.toString()}`);
@@ -105,6 +115,7 @@ export default function ExplorarPage() {
   function clearFilters() {
     setProvider("");
     setGenre("");
+    setOrigin("");
     setSort("popularity.desc");
   }
 
@@ -225,6 +236,23 @@ export default function ExplorarPage() {
                 }`}
               >
                 {p.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {ORIGIN_FILTERS.map((o) => (
+              <button
+                key={o.id || "any"}
+                type="button"
+                onClick={() => setOrigin(o.id)}
+                className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  origin === o.id
+                    ? "bg-rose-500 text-white"
+                    : "border border-[#2A2E3A] bg-[#0E0F12] text-zinc-300 hover:border-rose-400"
+                }`}
+              >
+                {o.label}
               </button>
             ))}
           </div>

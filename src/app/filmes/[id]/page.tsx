@@ -16,7 +16,13 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { AddToListButton } from "@/components/AddToListModal";
 import { CastSection, RecommendationsSection, TrailerButton } from "@/components/MediaExtras";
-import { useRemoveMovie, useUpsertMovie, useUserMovies } from "@/lib/queries/useLibrary";
+import { MediaReviewCard } from "@/components/ReviewControls";
+import {
+  useRemoveMovie,
+  useUpdateMovieMeta,
+  useUpsertMovie,
+  useUserMovies,
+} from "@/lib/queries/useLibrary";
 import { formatDateBR } from "@/lib/dates";
 import { getTmdbImageUrl } from "@/lib/tmdb";
 import type { TmdbMovieDetail } from "@/types";
@@ -40,6 +46,7 @@ export default function MovieDetailPage({
 
   const { data: userMovies = [] } = useUserMovies();
   const upsertMovie = useUpsertMovie();
+  const updateMovieMeta = useUpdateMovieMeta();
   const removeMovie = useRemoveMovie();
 
   const savedMovie = useMemo(
@@ -201,6 +208,35 @@ export default function MovieDetailPage({
             </div>
           </div>
         </div>
+
+        {savedMovie && (
+          <MediaReviewCard
+            rating={savedMovie.rating}
+            reaction={savedMovie.reaction}
+            notes={savedMovie.notes}
+            isFavorite={savedMovie.is_favorite}
+            rewatchCount={savedMovie.rewatch_count || 0}
+            saving={updateMovieMeta.isPending}
+            onSave={(patch) =>
+              updateMovieMeta.mutate({
+                tmdbId,
+                patch: {
+                  ...patch,
+                  genres: (movie.genres || []).map((g) => g.name),
+                },
+              })
+            }
+            onRewatch={() =>
+              updateMovieMeta.mutate({
+                tmdbId,
+                patch: {
+                  rewatch_count: (savedMovie.rewatch_count || 0) + 1,
+                  genres: (movie.genres || []).map((g) => g.name),
+                },
+              })
+            }
+          />
+        )}
 
         <CastSection cast={movie.credits?.cast} />
         <RecommendationsSection items={movie.recommendations?.results} type="movie" />

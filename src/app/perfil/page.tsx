@@ -10,14 +10,18 @@ import {
   Clock,
   Download,
   Film,
+  Heart,
   History,
   KeyRound,
   Loader2,
   LogOut,
+  RefreshCw,
+  Tag,
   Tv,
   Upload,
   User,
 } from "lucide-react";
+import { getTmdbImageUrl } from "@/lib/tmdb";
 import { AppShell } from "@/components/AppShell";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -58,6 +62,80 @@ export default function PerfilPage() {
   // Notifications state
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [notifStatus, setNotifStatus] = useState<string | null>(null);
+  const [syncingGenres, setSyncingGenres] = useState(false);
+
+  const favorites = useMemo(() => {
+    const favShows = shows
+      .filter((s) => s.is_favorite)
+      .map((s) => ({
+        key: `tv-${s.tmdb_id}`,
+        href: `/series/${s.tmdb_id}`,
+        title: s.title,
+        posterPath: s.poster_path,
+        type: "Série" as const,
+      }));
+    const favMovies = movies
+      .filter((m) => m.is_favorite)
+      .map((m) => ({
+        key: `mv-${m.tmdb_id}`,
+        href: `/filmes/${m.tmdb_id}`,
+        title: m.title,
+        posterPath: m.poster_path,
+        type: "Filme" as const,
+      }));
+    return [...favShows, ...favMovies];
+  }, [shows, movies]);
+
+  const topGenres = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const s of shows) {
+      for (const g of s.genres || []) {
+        counts.set(g, (counts.get(g) || 0) + 1);
+      }
+    }
+    for (const m of movies) {
+      for (const g of m.genres || []) {
+        counts.set(g, (counts.get(g) || 0) + 1);
+      }
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+  }, [shows, movies]);
+
+  const missingGenresCount = useMemo(() => {
+    const sMissing = shows.filter((s) => !s.genres || s.genres.length === 0).length;
+    const mMissing = movies.filter((m) => !m.genres || m.genres.length === 0).length;
+    return sMissing + mMissing;
+  }, [shows, movies]);
+
+  async function handleSyncGenres() {
+    setSyncingGenres(true);
+    try {
+      for (const s of shows.filter((x) => !x.genres || x.genres.length === 0)) {
+        const res = await fetch(`/api/tmdb/tv/${s.tmdb_id}`);
+        if (!res.ok) continue;
+        const d = (await res.json()) as { genres?: { name: string }[] };
+        const genres = (d.genres || []).map((g) => g.name);
+        if (genres.length > 0) {
+          await supabase.from("user_shows").update({ genres }).eq("tmdb_id", s.tmdb_id);
+        }
+      }
+      for (const m of movies.filter((x) => !x.genres || x.genres.length === 0)) {
+        const res = await fetch(`/api/tmdb/movie/${m.tmdb_id}`);
+        if (!res.ok) continue;
+        const d = (await res.json()) as { genres?: { name: string }[] };
+        const genres = (d.genres || []).map((g) => g.name);
+        if (genres.length > 0) {
+          await supabase.from("user_movies").update({ genres }).eq("tmdb_id", m.tmdb_id);
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: LIBRARY_KEYS.shows });
+      queryClient.invalidateQueries({ queryKey: LIBRARY_KEYS.movies });
+    } finally {
+      setSyncingGenres(false);
+    }
+  }
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -287,6 +365,22 @@ export default function PerfilPage() {
     if (notifEnabled) {
       localStorage.setItem(NOTIF_ENABLED_KEY, "false");
       setNotifEnabled(false);
+      if ("serviceWorker" in navigator) {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const sub = await reg.pushManager.getSubscription();
+          if (sub) {
+            await fetch("/api/push/subscribe", {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ endpoint: sub.endpoint }),
+            });
+            await sub.unsubscribe();
+          }
+        } catch {
+          // Ignore unsubscribe errors
+        }
+      }
       setNotifStatus("Alertas desativados neste dispositivo.");
       return;
     }
@@ -302,6 +396,35 @@ export default function PerfilPage() {
     if (permission === "granted") {
       localStorage.setItem(NOTIF_ENABLED_KEY, "true");
       setNotifEnabled(true);
+
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (vapidPublicKey && "serviceWorker" in navigator && "PushManager" in window) {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const padded = vapidPublicKey + "=".repeat((4 - (vapidPublicKey.length % 4)) % 4);
+          const base64 = padded.replace(/-/g, "+").replace(/_/g, "/");
+          const raw = window.atob(base64);
+          const keyArray = new Uint8Array(raw.length);
+          for (let i = 0; i < raw.length; i++) keyArray[i] = raw.charCodeAt(i);
+
+          const sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: keyArray,
+          });
+          await fetch("/api/push/subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(sub.toJSON()),
+          });
+          setNotifStatus(
+            "Push em segundo plano ativado! Você receberá alertas mesmo com o app fechado."
+          );
+          return;
+        } catch {
+          // Fallback to local notification message below
+        }
+      }
+
       setNotifStatus("Alertas ativados! Você será avisado quando houver estreias no dia.");
       try {
         new Notification("MyTVTime — Alertas ativados", {
@@ -453,6 +576,97 @@ export default function PerfilPage() {
             {stats.moviesWatchlistCount} na lista · {stats.movieTime.label}
           </p>
         </div>
+      </div>
+
+      {/* Favorites + Top Genres */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <section className="rounded-3xl border border-[#232630] bg-[#16181D] p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <Heart className="h-4 w-4 fill-rose-400 text-rose-400" />
+            <h2 className="text-base font-bold text-white">Meus Favoritos</h2>
+          </div>
+
+          {favorites.length === 0 ? (
+            <p className="py-8 text-center text-sm text-zinc-500">
+              Clique em <strong>Favoritar</strong> na página de uma série ou filme para destacá-lo
+              aqui.
+            </p>
+          ) : (
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+              {favorites.map((fav) => (
+                <Link
+                  key={fav.key}
+                  href={fav.href}
+                  className="group overflow-hidden rounded-xl border border-[#262A34] bg-[#0E0F12] hover:border-[#F5C518]/60"
+                >
+                  <div className="aspect-[2/3] w-full bg-[#1E2128]">
+                    {fav.posterPath && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={getTmdbImageUrl(fav.posterPath, "w185")!}
+                        alt={fav.title}
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                  </div>
+                  <p className="line-clamp-1 p-1.5 text-[11px] font-semibold text-zinc-200 group-hover:text-[#F5C518]">
+                    {fav.title}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-3xl border border-[#232630] bg-[#16181D] p-6">
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Tag className="h-4 w-4 text-[#F5C518]" />
+              <h2 className="text-base font-bold text-white">Gêneros Mais Assistidos</h2>
+            </div>
+
+            {missingGenresCount > 0 && (
+              <button
+                type="button"
+                disabled={syncingGenres}
+                onClick={handleSyncGenres}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#2A2E3A] bg-[#0E0F12] px-2.5 py-1 text-[11px] font-semibold text-[#F5C518] hover:border-[#F5C518] disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3 w-3 ${syncingGenres ? "animate-spin" : ""}`} />
+                Sincronizar ({missingGenresCount})
+              </button>
+            )}
+          </div>
+
+          {topGenres.length === 0 ? (
+            <p className="py-8 text-center text-sm text-zinc-500">
+              {missingGenresCount > 0
+                ? 'Clique em "Sincronizar" acima para carregar os gêneros das séries e filmes já salvos.'
+                : "Adicione séries e filmes para ver seus gêneros favoritos."}
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {topGenres.map(([genreName, count]) => {
+                const max = topGenres[0][1] || 1;
+                const pct = Math.round((count / max) * 100);
+                return (
+                  <div key={genreName}>
+                    <div className="mb-1 flex items-center justify-between text-xs">
+                      <span className="font-semibold text-zinc-200">{genreName}</span>
+                      <span className="text-zinc-400">{count} título(s)</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-[#232630]">
+                      <div
+                        className="h-full rounded-full bg-[#F5C518]"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
 
       {/* Monthly Chart + Recent History */}

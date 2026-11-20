@@ -20,11 +20,14 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { AddToListButton } from "@/components/AddToListModal";
 import { CastSection, RecommendationsSection, TrailerButton } from "@/components/MediaExtras";
+import { EpisodeReviewButton, MediaReviewCard } from "@/components/ReviewControls";
 import {
   useMarkEpisodesUpTo,
   useRemoveShow,
   useToggleEpisode,
   useToggleSeason,
+  useUpdateEpisodeReview,
+  useUpdateShowMeta,
   useUpdateShowStatus,
   useUpsertShow,
   useUserShows,
@@ -32,7 +35,7 @@ import {
 } from "@/lib/queries/useLibrary";
 import { formatCountdownLabel, formatDateBR, formatEpisodeCode } from "@/lib/dates";
 import { getTmdbImageUrl } from "@/lib/tmdb";
-import type { ShowStatus, TmdbSeasonDetail, TmdbShowDetail } from "@/types";
+import type { ShowStatus, TmdbSeasonDetail, TmdbShowDetail, WatchedEpisode } from "@/types";
 
 function SeasonAccordion({
   tmdbShowId,
@@ -40,7 +43,7 @@ function SeasonAccordion({
   seasonName,
   episodeCount,
   isInLibrary,
-  watchedSet,
+  watchedMap,
   defaultOpen,
   onEnsureInLibrary,
 }: {
@@ -49,7 +52,7 @@ function SeasonAccordion({
   seasonName: string;
   episodeCount: number;
   isInLibrary: boolean;
-  watchedSet: Set<string>;
+  watchedMap: Map<string, WatchedEpisode>;
   defaultOpen: boolean;
   onEnsureInLibrary: () => Promise<void>;
 }) {
@@ -57,6 +60,7 @@ function SeasonAccordion({
   const toggleEpisode = useToggleEpisode();
   const toggleSeason = useToggleSeason();
   const markUpTo = useMarkEpisodesUpTo();
+  const updateEpisodeReview = useUpdateEpisodeReview();
 
   const { data: seasonDetail, isLoading } = useQuery<TmdbSeasonDetail>({
     queryKey: ["tmdb", "tv", tmdbShowId, "season", seasonNumber],
@@ -72,10 +76,10 @@ function SeasonAccordion({
   const watchedInSeason = useMemo(() => {
     let count = 0;
     for (let ep = 1; ep <= episodeCount; ep++) {
-      if (watchedSet.has(`${seasonNumber}-${ep}`)) count++;
+      if (watchedMap.has(`${seasonNumber}-${ep}`)) count++;
     }
     return count;
-  }, [watchedSet, seasonNumber, episodeCount]);
+  }, [watchedMap, seasonNumber, episodeCount]);
 
   const allWatched = episodeCount > 0 && watchedInSeason >= episodeCount;
 
@@ -179,7 +183,8 @@ function SeasonAccordion({
             </div>
           ) : (
             (seasonDetail?.episodes || []).map((ep) => {
-              const watched = watchedSet.has(`${ep.season_number}-${ep.episode_number}`);
+              const watchedRecord = watchedMap.get(`${ep.season_number}-${ep.episode_number}`);
+              const watched = Boolean(watchedRecord);
               return (
                 <div
                   key={ep.id}
@@ -210,6 +215,23 @@ function SeasonAccordion({
                   </div>
 
                   <div className="flex shrink-0 items-center gap-2">
+                    {watched && (
+                      <EpisodeReviewButton
+                        episodeLabel={`${formatEpisodeCode(ep.season_number, ep.episode_number)} · ${ep.name}`}
+                        rating={watchedRecord?.rating}
+                        reaction={watchedRecord?.reaction}
+                        notes={watchedRecord?.notes}
+                        onSave={(patch) =>
+                          updateEpisodeReview.mutate({
+                            tmdbShowId,
+                            seasonNumber,
+                            episodeNumber: ep.episode_number,
+                            ...patch,
+                          })
+                        }
+                      />
+                    )}
+
                     {!watched && ep.episode_number > 1 && (
                       <button
                         type="button"
@@ -267,6 +289,7 @@ export default function ShowDetailPage({
   const { data: watchedEpisodes = [] } = useWatchedEpisodes();
   const upsertShow = useUpsertShow();
   const updateStatus = useUpdateShowStatus();
+  const updateShowMeta = useUpdateShowMeta();
   const removeShow = useRemoveShow();
 
   const savedShow = useMemo(
@@ -274,14 +297,14 @@ export default function ShowDetailPage({
     [userShows, tmdbId]
   );
 
-  const watchedSet = useMemo(() => {
-    const set = new Set<string>();
+  const watchedMap = useMemo(() => {
+    const map = new Map<string, WatchedEpisode>();
     for (const ep of watchedEpisodes) {
       if (ep.tmdb_show_id === tmdbId) {
-        set.add(`${ep.season_number}-${ep.episode_number}`);
+        map.set(`${ep.season_number}-${ep.episode_number}`, ep);
       }
     }
-    return set;
+    return map;
   }, [watchedEpisodes, tmdbId]);
 
   const regularSeasons = useMemo(
@@ -465,6 +488,39 @@ export default function ShowDetailPage({
             </div>
           </div>
 
+          {/* Review, Favorite & Rewatch */}
+          {savedShow && (
+            <MediaReviewCard
+              rating={savedShow.rating}
+              reaction={savedShow.reaction}
+              notes={savedShow.notes}
+              isFavorite={savedShow.is_favorite}
+              rewatchCount={savedShow.rewatch_count || 0}
+              isShow
+              saving={updateShowMeta.isPending}
+              onSave={(patch) =>
+                updateShowMeta.mutate({
+                  tmdbId,
+                  patch: {
+                    ...patch,
+                    genres: (show.genres || []).map((g) => g.name),
+                  },
+                })
+              }
+              onRewatch={(resetEpisodes) =>
+                updateShowMeta.mutate({
+                  tmdbId,
+                  patch: {
+                    rewatch_count: (savedShow.rewatch_count || 0) + 1,
+                    status: "watching",
+                    genres: (show.genres || []).map((g) => g.name),
+                  },
+                  resetEpisodes: Boolean(resetEpisodes),
+                })
+              }
+            />
+          )}
+
           {/* Cast */}
           <CastSection cast={show.credits?.cast} />
 
@@ -480,7 +536,7 @@ export default function ShowDetailPage({
                   seasonName={season.name}
                   episodeCount={season.episode_count}
                   isInLibrary={Boolean(savedShow)}
-                  watchedSet={watchedSet}
+                  watchedMap={watchedMap}
                   defaultOpen={index === 0}
                   onEnsureInLibrary={ensureInLibrary}
                 />

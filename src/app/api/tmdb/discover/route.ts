@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const type = sp.get("type") === "movie" ? "movie" : "tv";
   const provider = sp.get("provider") || "";
   const genre = sp.get("genre") || "";
+  const origin = sp.get("origin") || ""; // dorama | ko | ja | zh
   const sort = sp.get("sort") || "popularity.desc";
 
   try {
@@ -22,8 +23,21 @@ export async function GET(request: NextRequest) {
     if (genre) {
       params.with_genres = genre;
     }
+    if (origin === "dorama") {
+      params.with_original_language = "ko|ja|zh";
+      // Exclude animation unless user explicitly picked Animation genre (16)
+      if (genre !== "16") {
+        params.without_genres = "16";
+      }
+    } else if (origin === "ko" || origin === "ja" || origin === "zh") {
+      params.with_original_language = origin;
+      if (genre !== "16") {
+        params.without_genres = "16";
+      }
+    }
+
     if (sort === "vote_average.desc") {
-      params["vote_count.gte"] = "200";
+      params["vote_count.gte"] = origin ? "50" : "200";
     }
 
     const data = await tmdbFetch<{ results: TmdbMediaItem[] }>(

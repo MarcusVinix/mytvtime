@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Play, User, X } from "lucide-react";
 import { getTmdbImageUrl } from "@/lib/tmdb";
 import type { TmdbCastMember, TmdbVideo } from "@/types";
@@ -78,18 +79,19 @@ export function CastSection({ cast = [] }: { cast?: TmdbCastMember[] }) {
         {topCast.map((actor) => {
           const photo = getTmdbImageUrl(actor.profile_path, "w185");
           return (
-            <div
+            <Link
               key={actor.id}
-              className="w-28 shrink-0 overflow-hidden rounded-2xl border border-[#232630] bg-[#16181D]"
+              href={`/atores/${actor.id}`}
+              className="group w-28 shrink-0 overflow-hidden rounded-2xl border border-[#232630] bg-[#16181D] transition-colors hover:border-[#F5C518]/60"
             >
-              <div className="aspect-[2/3] w-full bg-[#1E2128]">
+              <div className="aspect-[2/3] w-full overflow-hidden bg-[#1E2128]">
                 {photo ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={photo}
                     alt={actor.name}
                     loading="lazy"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-zinc-600">
@@ -98,12 +100,14 @@ export function CastSection({ cast = [] }: { cast?: TmdbCastMember[] }) {
                 )}
               </div>
               <div className="p-2.5">
-                <p className="line-clamp-1 text-xs font-bold text-zinc-100">{actor.name}</p>
+                <p className="line-clamp-1 text-xs font-bold text-zinc-100 group-hover:text-[#F5C518]">
+                  {actor.name}
+                </p>
                 <p className="mt-0.5 line-clamp-1 text-[11px] text-zinc-400">
                   {actor.character || "—"}
                 </p>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>
