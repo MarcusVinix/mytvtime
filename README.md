@@ -14,15 +14,70 @@ Aplicativo Web/PWA de acompanhamento de séries, doramas, filmes e datas de lan�
 
 ---
 
-## Configuração Inicial
+## Deploy do Zero (Recuperação Completa)
 
-1. **TMDB:** Crie uma conta em [themoviedb.org](https://www.themoviedb.org/signup), vá em **Configurações → API** e copie o **API Read Access Token (v4)** para `TMDB_READ_ACCESS_TOKEN`.
-2. **Supabase:** Crie um projeto em [supabase.com](https://supabase.com), execute [supabase/schema.sql](supabase/schema.sql) (e, em atualizações, as migrações em `supabase/migration_*.sql`) no **SQL Editor**. Copie **Project URL** e **Publishable/Anon Key** para `.env.local`.
-3. **Rodar localmente:**
+Se você perder acesso às contas antigas (TMDB, Supabase, GitHub ou Vercel) ou quiser recriar o projeto do zero em outro ambiente, siga os 6 passos abaixo:
+
+### 1. Criar nova conta no TMDB (Catálogo)
+1. Acesse [themoviedb.org/signup](https://www.themoviedb.org/signup) e crie uma conta gratuita.
+2. Confirme o e-mail e vá em **Configurações → API → Solicitar chave de API** (*Developer* / uso pessoal).
+3. Guarde o **API Read Access Token (v4)**.
+
+### 2. Criar novo projeto no Supabase (Banco + Login)
+1. Acesse [supabase.com](https://supabase.com) e clique em **New Project** (região recomendada: `South America (São Paulo)`).
+2. No menu lateral, abra **SQL Editor → New Query**, cole e execute **todo** o conteúdo de [supabase/schema.sql](supabase/schema.sql) *(ele já contém todas as tabelas, colunas, listas, Web Push e regras de segurança RLS da versão completa)*.
+3. Em **Project Settings → API**, guarde:
+   - **Project URL** (`https://xxxx.supabase.co` — **sem** `/rest/v1/` no final)
+   - **Publishable / anon key**
+   - *(Opcional para Push em segundo plano)* **service_role key**
+
+### 3. Subir o código para um novo repositório no GitHub
+1. Crie um repositório vazio (pode ser privado) em [github.com/new](https://github.com/new).
+2. Na pasta do projeto, execute:
    ```powershell
+   git remote remove origin
+   git remote add origin https://github.com/SEU_USUARIO/mytvtime.git
+   git push -u origin main
+   ```
+
+### 4. Publicar na Vercel (Grátis)
+1. Acesse [vercel.com](https://vercel.com), entre com o GitHub e clique em **Add New → Project**.
+2. Importe o repositório `mytvtime`.
+3. Em **Environment Variables**, cadastre as chaves obrigatórias:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `TMDB_READ_ACCESS_TOKEN`
+4. *(Opcional — para Notificações Push com o app fechado)* gere um novo par de chaves VAPID rodando `npx.cmd web-push generate-vapid-keys` e adicione também:
+   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+   - `VAPID_PRIVATE_KEY`
+   - `VAPID_SUBJECT` (ex.: `mailto:seu@email.com`)
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `CRON_SECRET` (qualquer senha aleatória)
+5. Clique em **Deploy** e anote a URL gerada (ex.: `https://mytvtime-xxxx.vercel.app`).
+
+### 5. Configurar URLs no Supabase Auth
+1. No painel do Supabase, vá em **Authentication → URL Configuration**.
+2. Em **Site URL**, coloque `https://SEU-APP.vercel.app`.
+3. Em **Redirect URLs**, adicione `https://SEU-APP.vercel.app/auth/callback` e salve.
+
+### 6. Instalar no celular e restaurar seu backup
+1. Abra `https://SEU-APP.vercel.app` no celular e crie sua conta.
+2. **Instalar como PWA:**
+   - **Android (Chrome):** menu **⋮ → Instalar aplicativo**.
+   - **iPhone (Safari):** **Compartilhar → Adicionar à Tela de Início**.
+3. **Restaurar histórico:** vá em **Perfil → Importar JSON** e selecione seu arquivo `mytvtime-backup-*.json` salvo anteriormente.
+
+---
+
+## Rodar Localmente (Desenvolvimento)
+
+1. Copie `.env.example` para `.env.local` e preencha as chaves.
+2. Instale as dependências e inicie o servidor:
+   ```powershell
+   npm.cmd install
    npm.cmd run dev
    ```
-   Acesse `http://localhost:3000`.
+3. Acesse `http://localhost:3000`.
 
 ---
 

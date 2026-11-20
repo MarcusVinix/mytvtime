@@ -1,6 +1,6 @@
 -- ============================================================
--- MyTVTime - Schema SQL para Supabase (PostgreSQL + RLS)
--- Cole e execute este script no SQL Editor do seu projeto Supabase
+-- MyTVTime - Schema SQL Completo (Instalação do Zero)
+-- Cole e execute este script inteiro no SQL Editor do Supabase
 -- ============================================================
 
 -- 1. Tabela de Séries acompanhadas pelo usuário
@@ -16,6 +16,12 @@ create table if not exists public.user_shows (
   number_of_seasons integer not null default 1,
   first_air_date date,
   next_episode_date date,
+  rating smallint check (rating is null or (rating >= 1 and rating <= 5)),
+  reaction text,
+  notes text,
+  is_favorite boolean not null default false,
+  rewatch_count integer not null default 0,
+  genres text[] not null default '{}',
   updated_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
   unique (user_id, tmdb_id)
@@ -30,6 +36,8 @@ create table if not exists public.watched_episodes (
   episode_number integer not null,
   runtime_minutes integer not null default 45,
   rating smallint check (rating is null or (rating >= 1 and rating <= 5)),
+  reaction text,
+  notes text,
   watched_at timestamptz not null default now(),
   unique (user_id, tmdb_show_id, season_number, episode_number)
 );
@@ -46,45 +54,18 @@ create table if not exists public.user_movies (
   status text not null default 'watchlist' check (status in ('watchlist', 'watched')),
   runtime_minutes integer not null default 110,
   rating smallint check (rating is null or (rating >= 1 and rating <= 5)),
+  reaction text,
+  notes text,
+  is_favorite boolean not null default false,
+  rewatch_count integer not null default 0,
+  genres text[] not null default '{}',
   watched_at timestamptz,
   updated_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
   unique (user_id, tmdb_id)
 );
 
--- Índices para performance
-create index if not exists idx_user_shows_user on public.user_shows(user_id, updated_at desc);
-create index if not exists idx_watched_episodes_user_show on public.watched_episodes(user_id, tmdb_show_id);
-create index if not exists idx_user_movies_user on public.user_movies(user_id, updated_at desc);
-
--- Habilitar Row Level Security (RLS)
-alter table public.user_shows enable row level security;
-alter table public.watched_episodes enable row level security;
-alter table public.user_movies enable row level security;
-
--- Políticas de segurança: cada usuário só acessa os próprios dados
-drop policy if exists "Users manage own shows" on public.user_shows;
-create policy "Users manage own shows"
-  on public.user_shows
-  for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
-drop policy if exists "Users manage own watched episodes" on public.watched_episodes;
-create policy "Users manage own watched episodes"
-  on public.watched_episodes
-  for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
-drop policy if exists "Users manage own movies" on public.user_movies;
-create policy "Users manage own movies"
-  on public.user_movies
-  for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
--- 4. Listas Personalizadas (Fase 2)
+-- 4. Listas Personalizadas
 create table if not exists public.custom_lists (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -106,22 +87,59 @@ create table if not exists public.custom_list_items (
   unique (list_id, media_type, tmdb_id)
 );
 
+-- 5. Assinaturas Web Push (Notificações em segundo plano)
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now()
+);
+
+-- Índices para performance
+create index if not exists idx_user_shows_user on public.user_shows(user_id, updated_at desc);
+create index if not exists idx_watched_episodes_user_show on public.watched_episodes(user_id, tmdb_show_id);
+create index if not exists idx_user_movies_user on public.user_movies(user_id, updated_at desc);
 create index if not exists idx_custom_lists_user on public.custom_lists(user_id, updated_at desc);
 create index if not exists idx_custom_list_items_list on public.custom_list_items(list_id, added_at desc);
+create index if not exists idx_push_subscriptions_user on public.push_subscriptions(user_id);
 
+-- Habilitar Row Level Security (RLS)
+alter table public.user_shows enable row level security;
+alter table public.watched_episodes enable row level security;
+alter table public.user_movies enable row level security;
 alter table public.custom_lists enable row level security;
 alter table public.custom_list_items enable row level security;
+alter table public.push_subscriptions enable row level security;
+
+-- Políticas de segurança: cada usuário só acessa os próprios dados
+drop policy if exists "Users manage own shows" on public.user_shows;
+create policy "Users manage own shows"
+  on public.user_shows for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "Users manage own watched episodes" on public.watched_episodes;
+create policy "Users manage own watched episodes"
+  on public.watched_episodes for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "Users manage own movies" on public.user_movies;
+create policy "Users manage own movies"
+  on public.user_movies for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "Users manage own custom lists" on public.custom_lists;
 create policy "Users manage own custom lists"
-  on public.custom_lists
-  for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  on public.custom_lists for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "Users manage own custom list items" on public.custom_list_items;
 create policy "Users manage own custom list items"
-  on public.custom_list_items
-  for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  on public.custom_list_items for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "Users manage own push subscriptions" on public.push_subscriptions;
+create policy "Users manage own push subscriptions"
+  on public.push_subscriptions for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
