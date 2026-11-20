@@ -2,6 +2,8 @@
 
 Aplicativo Web/PWA de acompanhamento de séries, doramas, filmes e datas de lançamento, construído com **Next.js (App Router)**, **Tailwind CSS**, **Supabase** e **TMDB API**.
 
+> **Documentação Técnica & Fluxogramas completos:** veja [docs/ARQUITETURA_E_FLUXOS.md](docs/ARQUITETURA_E_FLUXOS.md) para diagramas de todos os fluxos, arquitetura, mapa de arquivos, rotas de API e modelagem do banco de dados.
+
 ## Funcionalidades
 - **Séries:** *Assistir a seguir (Up Next)* com botão de 1 clique, *Em breve*, marcação por episódio, temporada inteira ou *"Até aqui"*, *Modo Reassistir (Rewatch)*, *Favoritos*, *Avaliações (1–5 estrelas)*, *Reações* e *Notas pessoais*.
 - **Filmes:** *Quero assistir (Watchlist)*, *Em breve*, *Assistidos*, *Favoritos*, *Rewatch*, *Avaliações*, *Reações* e *Notas*.
