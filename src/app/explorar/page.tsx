@@ -210,6 +210,8 @@ export default function ExplorarPage() {
               >
                 <option value="popularity.desc">Mais populares</option>
                 <option value="vote_average.desc">Melhor avaliados</option>
+                <option value="release_date.desc">Mais recentes (lançamento)</option>
+                <option value="release_date.asc">Mais antigos (lançamento)</option>
               </select>
 
               {hasFilters && (

@@ -12,8 +12,18 @@ export async function GET(request: NextRequest) {
   const sort = sp.get("sort") || "popularity.desc";
 
   try {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const dateField = type === "tv" ? "first_air_date" : "primary_release_date";
+
+    let tmdbSort = sort;
+    if (sort === "release_date.desc") {
+      tmdbSort = `${dateField}.desc`;
+    } else if (sort === "release_date.asc") {
+      tmdbSort = `${dateField}.asc`;
+    }
+
     const params: Record<string, string> = {
-      sort_by: sort,
+      sort_by: tmdbSort,
       watch_region: "BR",
       include_adult: "false",
     };
@@ -39,6 +49,14 @@ export async function GET(request: NextRequest) {
 
     if (sort === "vote_average.desc") {
       params["vote_count.gte"] = origin ? "50" : "200";
+    } else if (sort === "release_date.desc") {
+      // Evita retornar títulos futuros sem pôster (ex.: 2029) no topo de "Mais recentes"
+      params[`${dateField}.lte`] = todayIso;
+      params["vote_count.gte"] = origin ? "1" : "5";
+    } else if (sort === "release_date.asc") {
+      // Evita registros sem data ou obscuros sem votos no topo de "Mais antigos"
+      params[`${dateField}.gte`] = "1950-01-01";
+      params["vote_count.gte"] = origin ? "1" : "10";
     }
 
     const data = await tmdbFetch<{ results: TmdbMediaItem[] }>(
