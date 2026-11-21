@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { tmdbFetch } from "@/lib/tmdb";
+import { SERVER_CACHE } from "@/lib/cache";
 import type { TmdbShowDetail } from "@/types";
 
 export async function GET(
@@ -18,7 +19,7 @@ export async function GET(
         append_to_response: "watch/providers,credits,videos,recommendations",
         include_video_language: "pt-BR,pt,en,null",
       },
-      1800
+      SERVER_CACHE.tmdbDetailsSeconds
     );
     return NextResponse.json(data);
   } catch (err) {

@@ -15,6 +15,7 @@ import { AppShell } from "@/components/AppShell";
 import { useUserMovies, useUserShows } from "@/lib/queries/useLibrary";
 import { formatDateBR, formatEpisodeCode } from "@/lib/dates";
 import { getTmdbImageUrl } from "@/lib/tmdb";
+import { CLIENT_CACHE_MS } from "@/lib/cache";
 import type { TmdbSeasonDetail, TmdbShowDetail } from "@/types";
 
 interface CalendarEvent {
@@ -63,7 +64,7 @@ export default function CalendarioPage() {
         if (!res.ok) throw new Error("Erro ao carregar série");
         return res.json() as Promise<TmdbShowDetail>;
       },
-      staleTime: 10 * 60 * 1000,
+      staleTime: CLIENT_CACHE_MS.details,
     })),
   });
 
@@ -89,7 +90,7 @@ export default function CalendarioPage() {
         if (!res.ok) throw new Error("Erro ao carregar temporada");
         return res.json() as Promise<TmdbSeasonDetail>;
       },
-      staleTime: 10 * 60 * 1000,
+      staleTime: CLIENT_CACHE_MS.details,
     })),
   });
 

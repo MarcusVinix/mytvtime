@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { tmdbFetch } from "@/lib/tmdb";
+import { SERVER_CACHE } from "@/lib/cache";
 import type { TmdbSeasonDetail } from "@/types";
 
 export async function GET(
@@ -15,7 +16,7 @@ export async function GET(
     const data = await tmdbFetch<TmdbSeasonDetail>(
       `/tv/${id}/season/${seasonNumber}`,
       {},
-      1800
+      SERVER_CACHE.tmdbDetailsSeconds
     );
     return NextResponse.json(data);
   } catch (err) {

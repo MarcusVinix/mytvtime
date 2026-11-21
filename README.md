@@ -83,6 +83,24 @@ Se você perder acesso às contas antigas (TMDB, Supabase, GitHub ou Vercel) ou 
 
 ---
 
+## Parametrização de Cache (`.env`)
+
+Todos os tempos de cache podem ser ajustados via variáveis de ambiente (no `.env.local` ou na **Vercel → Environment Variables**). Caso não sejam informadas, o aplicativo usa automaticamente os valores padrão abaixo (em **segundos**, definidos em `src/lib/cache.ts`):
+
+| Variável | Camada | Default | Onde é aplicada |
+| :--- | :--- | :--- | :--- |
+| `CACHE_TMDB_SEARCH_SECONDS` | Servidor (Next.js) | `300` (5 min) | Busca (`/api/tmdb/search`) |
+| `CACHE_TMDB_DETAILS_SECONDS` | Servidor (Next.js) | `1800` (30 min) | Detalhes de série/filme, temporadas, filtros (`/discover`) e Cron |
+| `CACHE_TMDB_TRENDING_SECONDS` | Servidor (Next.js) | `3600` (1 hora) | Tendências (`/trending`) e perfil de atores (`/person`) |
+| `NEXT_PUBLIC_CACHE_LIBRARY_SECONDS` | Cliente (RAM) | `60` (1 min) | Biblioteca do Supabase e sessão do usuário |
+| `NEXT_PUBLIC_CACHE_DETAILS_SECONDS` | Cliente (RAM) | `600` (10 min) | Detalhes de séries e temporadas no cliente (*Up Next* / *Calendário*) |
+| `NEXT_PUBLIC_CACHE_TRENDING_SECONDS` | Cliente (RAM) | `900` (15 min) | Tendências no Explorar e sino de alertas |
+| `NEXT_PUBLIC_CACHE_PERSON_SECONDS` | Cliente (RAM) | `1800` (30 min) | Perfil do ator / filmografia |
+
+*(Dica: definir `0` em qualquer variável desativa o respectivo cache; ideal para testes pontuais.)*
+
+---
+
 ## Produção: Manutenção e Possíveis Problemas
 
 Para uso pessoal (ou pequeno grupo), o **MyTVTime** se mantém **estável e gratuito** usando os planos Free da **Vercel**, **Supabase** e **TMDB**. Abaixo estão os pontos de atenção em produção e como resolver cada possível problema:

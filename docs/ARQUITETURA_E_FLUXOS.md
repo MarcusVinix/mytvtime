@@ -84,6 +84,7 @@ c:\Projetos\TVTime\
     ├── types/index.ts             # Tipagens TypeScript (Supabase + TMDB)
     ├── lib/
     │   ├── env.ts                 # Checagem de configuração do ambiente
+    │   ├── cache.ts               # Parametrização centralizada de cache via .env (com defaults)
     │   ├── tmdb.ts                # Cliente fetch server-side com cache (revalidate) e URLs de imagem
     │   ├── dates.ts               # Formatação pt-BR, T01E01, contagem regressiva e tempo assistido
     │   ├── supabase/
@@ -402,9 +403,21 @@ erDiagram
 
 ## 7. Estratégia de Cache e Segurança
 
-### Camadas de Cache
-1. **Servidor (Next.js Data Cache):** todas as chamadas ao TMDB passam pelo backend (`src/lib/tmdb.ts`) com `revalidate` entre 5 min e 1 hora. Nenhum histórico de busca é salvo no banco.
-2. **Cliente (TanStack Query):** mantém dados em RAM durante a navegação (`staleTime` de 1 min para dados do Supabase e 10–30 min para TMDB) e aplica **atualização otimista** ao marcar/desmarcar episódios individuais.
+### Camadas de Cache (Parametrizáveis via `.env`)
+Todos os tempos de cache são centralizados em `src/lib/cache.ts` e lidos de variáveis de ambiente (em segundos), com fallback automático para os valores padrão caso a variável não exista ou esteja vazia:
+
+| Variável de Ambiente | Camada | Default | Uso |
+| :--- | :--- | :--- | :--- |
+| `CACHE_TMDB_SEARCH_SECONDS` | Servidor (`revalidate`) | `300` (5 min) | `/api/tmdb/search` |
+| `CACHE_TMDB_DETAILS_SECONDS` | Servidor (`revalidate`) | `1800` (30 min) | `/api/tmdb/tv/[id]`, `season/[n]`, `movie/[id]`, `discover`, `cron/releases` |
+| `CACHE_TMDB_TRENDING_SECONDS` | Servidor (`revalidate`) | `3600` (1 hora) | `/api/tmdb/trending`, `/api/tmdb/person/[id]` |
+| `NEXT_PUBLIC_CACHE_LIBRARY_SECONDS` | Cliente (`staleTime`) | `60` (1 min) | Dados do Supabase (`useLibrary.ts` e default do `QueryClient`) |
+| `NEXT_PUBLIC_CACHE_DETAILS_SECONDS` | Cliente (`staleTime`) | `600` (10 min) | Séries e temporadas em `/series`, `/series/[id]` e `/calendario` |
+| `NEXT_PUBLIC_CACHE_TRENDING_SECONDS` | Cliente (`staleTime`) | `900` (15 min) | Tendências em `/explorar` e alertas em `ReleaseNotifications` |
+| `NEXT_PUBLIC_CACHE_PERSON_SECONDS` | Cliente (`staleTime`) | `1800` (30 min) | Perfil do ator em `/atores/[id]` |
+
+1. **Servidor (Next.js Data Cache):** todas as chamadas ao TMDB passam pelo backend (`src/lib/tmdb.ts`) usando os TTLs acima. Nenhum histórico de busca é salvo no banco.
+2. **Cliente (TanStack Query):** mantém dados em RAM durante a navegação e aplica **atualização otimista** ao marcar/desmarcar episódios individuais.
 3. **Banco (Metadados leves):** `user_shows` e `user_movies` armazenam título, pôster e gêneros para renderização instantânea de listas e estatísticas sem depender do TMDB.
 4. **Service Worker (`public/sw.js`):** ignora todas as rotas `/api/` para evitar servir dados desatualizados.
 

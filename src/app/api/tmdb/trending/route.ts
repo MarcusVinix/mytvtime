@@ -1,13 +1,26 @@
 import { NextResponse } from "next/server";
 import { tmdbFetch } from "@/lib/tmdb";
+import { SERVER_CACHE } from "@/lib/cache";
 import type { TmdbMediaItem } from "@/types";
 
 export async function GET() {
   try {
     const [trendingTv, trendingMovies, popularTv] = await Promise.all([
-      tmdbFetch<{ results: TmdbMediaItem[] }>("/trending/tv/week", {}, 3600),
-      tmdbFetch<{ results: TmdbMediaItem[] }>("/trending/movie/week", {}, 3600),
-      tmdbFetch<{ results: TmdbMediaItem[] }>("/tv/popular", {}, 3600),
+      tmdbFetch<{ results: TmdbMediaItem[] }>(
+        "/trending/tv/week",
+        {},
+        SERVER_CACHE.tmdbTrendingSeconds
+      ),
+      tmdbFetch<{ results: TmdbMediaItem[] }>(
+        "/trending/movie/week",
+        {},
+        SERVER_CACHE.tmdbTrendingSeconds
+      ),
+      tmdbFetch<{ results: TmdbMediaItem[] }>(
+        "/tv/popular",
+        {},
+        SERVER_CACHE.tmdbTrendingSeconds
+      ),
     ]);
 
     return NextResponse.json({

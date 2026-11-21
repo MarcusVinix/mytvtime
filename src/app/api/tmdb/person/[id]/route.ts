@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { tmdbFetch } from "@/lib/tmdb";
+import { SERVER_CACHE } from "@/lib/cache";
 import type { TmdbPersonDetail } from "@/types";
 
 export async function GET(
@@ -15,7 +16,7 @@ export async function GET(
     const data = await tmdbFetch<TmdbPersonDetail>(
       `/person/${id}`,
       { append_to_response: "combined_credits" },
-      3600
+      SERVER_CACHE.tmdbTrendingSeconds
     );
     return NextResponse.json(data);
   } catch (err) {

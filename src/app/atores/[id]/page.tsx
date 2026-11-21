@@ -8,6 +8,7 @@ import { AppShell } from "@/components/AppShell";
 import { MediaCard } from "@/components/MediaCard";
 import { formatDateBR } from "@/lib/dates";
 import { getTmdbImageUrl } from "@/lib/tmdb";
+import { CLIENT_CACHE_MS } from "@/lib/cache";
 import type { TmdbPersonDetail } from "@/types";
 
 export default function AtorDetailPage({
@@ -26,7 +27,7 @@ export default function AtorDetailPage({
       if (!res.ok) throw new Error("Não foi possível carregar o perfil.");
       return res.json();
     },
-    staleTime: 30 * 60 * 1000,
+    staleTime: CLIENT_CACHE_MS.person,
   });
 
   const { tvCredits, movieCredits } = useMemo(() => {

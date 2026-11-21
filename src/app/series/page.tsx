@@ -27,6 +27,7 @@ import {
   isReleased,
 } from "@/lib/dates";
 import { getTmdbImageUrl } from "@/lib/tmdb";
+import { CLIENT_CACHE_MS } from "@/lib/cache";
 import type {
   ShowStatus,
   TmdbEpisode,
@@ -83,7 +84,7 @@ export default function SeriesPage() {
         if (!res.ok) throw new Error("Erro ao carregar série");
         return res.json() as Promise<TmdbShowDetail>;
       },
-      staleTime: 10 * 60 * 1000,
+      staleTime: CLIENT_CACHE_MS.details,
     })),
   });
 
@@ -130,7 +131,7 @@ export default function SeriesPage() {
         if (!res.ok) throw new Error("Erro ao carregar temporada");
         return res.json() as Promise<TmdbSeasonDetail>;
       },
-      staleTime: 10 * 60 * 1000,
+      staleTime: CLIENT_CACHE_MS.details,
     })),
   });
 

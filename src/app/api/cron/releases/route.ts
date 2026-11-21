@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import * as webpush from "web-push";
 import { tmdbFetch } from "@/lib/tmdb";
+import { SERVER_CACHE } from "@/lib/cache";
 import type { TmdbShowDetail } from "@/types";
 
 export async function GET(request: NextRequest) {
@@ -72,7 +73,11 @@ export async function GET(request: NextRequest) {
   await Promise.all(
     uniqueShowIds.map(async (tmdbId) => {
       try {
-        const detail = await tmdbFetch<TmdbShowDetail>(`/tv/${tmdbId}`, {}, 1800);
+        const detail = await tmdbFetch<TmdbShowDetail>(
+          `/tv/${tmdbId}`,
+          {},
+          SERVER_CACHE.tmdbDetailsSeconds
+        );
         const candidates = [detail.next_episode_to_air, detail.last_episode_to_air];
         const match = candidates.find((ep) => ep?.air_date === todayIso);
         if (match) {

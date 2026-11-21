@@ -35,6 +35,7 @@ import {
 } from "@/lib/queries/useLibrary";
 import { formatCountdownLabel, formatDateBR, formatEpisodeCode } from "@/lib/dates";
 import { getTmdbImageUrl } from "@/lib/tmdb";
+import { CLIENT_CACHE_MS } from "@/lib/cache";
 import type { ShowStatus, TmdbSeasonDetail, TmdbShowDetail, WatchedEpisode } from "@/types";
 
 function SeasonAccordion({
@@ -70,7 +71,7 @@ function SeasonAccordion({
       return res.json();
     },
     enabled: open,
-    staleTime: 10 * 60 * 1000,
+    staleTime: CLIENT_CACHE_MS.details,
   });
 
   const watchedInSeason = useMemo(() => {

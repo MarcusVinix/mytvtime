@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { CLIENT_CACHE_MS } from "@/lib/cache";
 import type {
   CustomList,
   MovieStatus,
@@ -31,7 +32,7 @@ export function useCurrentUser() {
       const { data } = await supabase.auth.getUser();
       return data.user;
     },
-    staleTime: 60_000,
+    staleTime: CLIENT_CACHE_MS.library,
   });
 }
 

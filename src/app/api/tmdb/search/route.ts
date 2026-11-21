@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { tmdbFetch } from "@/lib/tmdb";
+import { SERVER_CACHE } from "@/lib/cache";
 import type { TmdbMediaItem } from "@/types";
 
 export async function GET(request: NextRequest) {
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
     const data = await tmdbFetch<{ results: TmdbMediaItem[] }>(
       "/search/multi",
       { query, include_adult: "false" },
-      300
+      SERVER_CACHE.tmdbSearchSeconds
     );
     const filtered = (data.results || []).filter(
       (item) => item.media_type === "tv" || item.media_type === "movie"

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Filter, Loader2, Search, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { MediaCard } from "@/components/MediaCard";
+import { CLIENT_CACHE_MS } from "@/lib/cache";
 import type { TmdbMediaItem } from "@/types";
 
 interface TrendingResponse {
@@ -107,7 +108,7 @@ export default function ExplorarPage() {
       if (!res.ok) throw new Error("Erro ao carregar catálogo");
       return res.json();
     },
-    staleTime: 15 * 60 * 1000,
+    staleTime: CLIENT_CACHE_MS.trending,
   });
 
   const genres = discoverType === "tv" ? TV_GENRES : MOVIE_GENRES;

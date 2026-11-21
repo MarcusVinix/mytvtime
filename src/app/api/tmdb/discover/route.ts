@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { tmdbFetch } from "@/lib/tmdb";
+import { SERVER_CACHE } from "@/lib/cache";
 import type { TmdbMediaItem } from "@/types";
 
 export async function GET(request: NextRequest) {
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
     const data = await tmdbFetch<{ results: TmdbMediaItem[] }>(
       `/discover/${type}`,
       params,
-      1800
+      SERVER_CACHE.tmdbDetailsSeconds
     );
 
     const results = (data.results || []).map((item) => ({

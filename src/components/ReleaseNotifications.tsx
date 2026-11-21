@@ -6,6 +6,7 @@ import { useQueries } from "@tanstack/react-query";
 import { Bell, BellRing, Calendar, X } from "lucide-react";
 import { useUserMovies, useUserShows } from "@/lib/queries/useLibrary";
 import { formatCountdownLabel, formatEpisodeCode, getDaysUntil } from "@/lib/dates";
+import { CLIENT_CACHE_MS } from "@/lib/cache";
 import type { TmdbShowDetail } from "@/types";
 
 interface ReleaseAlert {
@@ -38,7 +39,7 @@ export function ReleaseNotifications() {
         if (!res.ok) throw new Error("Erro");
         return res.json() as Promise<TmdbShowDetail>;
       },
-      staleTime: 15 * 60 * 1000,
+      staleTime: CLIENT_CACHE_MS.trending,
     })),
   });
 
