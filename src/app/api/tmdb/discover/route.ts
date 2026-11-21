@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
   const genre = sp.get("genre") || "";
   const origin = sp.get("origin") || ""; // dorama | ko | ja | zh
   const sort = sp.get("sort") || "popularity.desc";
+  const rawPage = Number(sp.get("page") || "1");
+  const page = Number.isFinite(rawPage) ? Math.min(500, Math.max(1, Math.floor(rawPage))) : 1;
 
   try {
     const todayIso = new Date().toISOString().slice(0, 10);
@@ -26,6 +28,7 @@ export async function GET(request: NextRequest) {
       sort_by: tmdbSort,
       watch_region: "BR",
       include_adult: "false",
+      page: String(page),
     };
 
     if (provider) {
@@ -59,7 +62,12 @@ export async function GET(request: NextRequest) {
       params["vote_count.gte"] = origin ? "1" : "10";
     }
 
-    const data = await tmdbFetch<{ results: TmdbMediaItem[] }>(
+    const data = await tmdbFetch<{
+      page: number;
+      total_pages: number;
+      total_results: number;
+      results: TmdbMediaItem[];
+    }>(
       `/discover/${type}`,
       params,
       SERVER_CACHE.tmdbDetailsSeconds
@@ -70,7 +78,12 @@ export async function GET(request: NextRequest) {
       media_type: type as "tv" | "movie",
     }));
 
-    return NextResponse.json({ results });
+    return NextResponse.json({
+      results,
+      page: data.page || page,
+      totalPages: Math.min(500, data.total_pages || 1),
+      totalResults: data.total_results || results.length,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro ao filtrar catálogo";
     const status = message === "TMDB_NOT_CONFIGURED" ? 503 : 500;

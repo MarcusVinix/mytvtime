@@ -2,11 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Filter, Loader2, Search, Sparkles, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Filter, Loader2, Search, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { MediaCard } from "@/components/MediaCard";
 import { CLIENT_CACHE_MS } from "@/lib/cache";
 import type { TmdbMediaItem } from "@/types";
+
+interface PaginatedMediaResponse {
+  results: TmdbMediaItem[];
+  page: number;
+  totalPages: number;
+  totalResults: number;
+}
 
 interface TrendingResponse {
   trendingTv: TmdbMediaItem[];
@@ -66,26 +73,42 @@ export default function ExplorarPage() {
   const [genre, setGenre] = useState("");
   const [origin, setOrigin] = useState("");
   const [sort, setSort] = useState("popularity.desc");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 350);
     return () => clearTimeout(t);
   }, [query]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQuery, discoverType, provider, genre, origin, sort]);
+
   const hasFilters = Boolean(provider || genre || origin || sort !== "popularity.desc");
 
-  const { data: searchData, isLoading: searchLoading } = useQuery<{ results: TmdbMediaItem[] }>({
-    queryKey: ["tmdb", "search", debouncedQuery],
+  const {
+    data: searchData,
+    isLoading: searchLoading,
+    isFetching: searchFetching,
+  } = useQuery<PaginatedMediaResponse>({
+    queryKey: ["tmdb", "search", debouncedQuery, page],
     queryFn: async () => {
-      const res = await fetch(`/api/tmdb/search?q=${encodeURIComponent(debouncedQuery)}`);
+      const res = await fetch(
+        `/api/tmdb/search?q=${encodeURIComponent(debouncedQuery)}&page=${page}`
+      );
       if (!res.ok) throw new Error("Erro na busca");
       return res.json();
     },
     enabled: debouncedQuery.length >= 2,
+    placeholderData: (prev) => prev,
   });
 
-  const { data: discoverData, isLoading: discoverLoading } = useQuery<{ results: TmdbMediaItem[] }>({
-    queryKey: ["tmdb", "discover", discoverType, provider, genre, origin, sort],
+  const {
+    data: discoverData,
+    isLoading: discoverLoading,
+    isFetching: discoverFetching,
+  } = useQuery<PaginatedMediaResponse>({
+    queryKey: ["tmdb", "discover", discoverType, provider, genre, origin, sort, page],
     queryFn: async () => {
       const params = new URLSearchParams({
         type: discoverType,
@@ -93,12 +116,14 @@ export default function ExplorarPage() {
         genre,
         origin,
         sort,
+        page: String(page),
       });
       const res = await fetch(`/api/tmdb/discover?${params.toString()}`);
       if (!res.ok) throw new Error("Erro ao filtrar");
       return res.json();
     },
     enabled: debouncedQuery.length < 2 && hasFilters,
+    placeholderData: (prev) => prev,
   });
 
   const { data: trending, isLoading: trendingLoading } = useQuery<TrendingResponse>({
@@ -118,6 +143,46 @@ export default function ExplorarPage() {
     setGenre("");
     setOrigin("");
     setSort("popularity.desc");
+    setPage(1);
+  }
+
+  function changePage(nextPage: number) {
+    setPage(nextPage);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function renderPagination(currentPage: number, totalPages: number, fetching: boolean) {
+    if (totalPages <= 1) return null;
+    return (
+      <div className="mt-8 flex items-center justify-center gap-3">
+        <button
+          type="button"
+          disabled={currentPage <= 1 || fetching}
+          onClick={() => changePage(currentPage - 1)}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#2A2E3A] bg-[#16181D] px-4 py-2 text-xs font-bold text-zinc-200 transition-colors hover:border-[#F5C518] hover:text-[#F5C518] disabled:opacity-40"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Anterior
+        </button>
+
+        <span className="inline-flex items-center gap-2 rounded-xl border border-[#232630] bg-[#121419] px-4 py-2 text-xs font-semibold text-zinc-300">
+          {fetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#F5C518]" />}
+          Página <strong className="text-[#F5C518]">{currentPage}</strong> de {totalPages}
+        </span>
+
+        <button
+          type="button"
+          disabled={currentPage >= totalPages || fetching}
+          onClick={() => changePage(currentPage + 1)}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#2A2E3A] bg-[#16181D] px-4 py-2 text-xs font-bold text-zinc-200 transition-colors hover:border-[#F5C518] hover:text-[#F5C518] disabled:opacity-40"
+        >
+          Próxima
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -265,9 +330,16 @@ export default function ExplorarPage() {
       {/* Search Results */}
       {debouncedQuery.length >= 2 ? (
         <section>
-          <h2 className="mb-4 text-base font-bold text-white">
-            Resultados para &ldquo;{debouncedQuery}&rdquo;
-          </h2>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h2 className="text-base font-bold text-white">
+              Resultados para &ldquo;{debouncedQuery}&rdquo;
+            </h2>
+            {searchData?.totalResults ? (
+              <span className="text-xs text-zinc-400">
+                {searchData.totalResults.toLocaleString("pt-BR")} resultado(s)
+              </span>
+            ) : null}
+          </div>
           {searchLoading ? (
             <div className="flex items-center justify-center py-16 text-zinc-400">
               <Loader2 className="mr-2 h-5 w-5 animate-spin text-[#F5C518]" />
@@ -278,31 +350,45 @@ export default function ExplorarPage() {
               Nenhum resultado encontrado.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {(searchData?.results || []).map((item) => {
-                const isTv = item.media_type === "tv";
-                const year = (item.first_air_date || item.release_date || "").slice(0, 4);
-                return (
-                  <MediaCard
-                    key={`${item.media_type}-${item.id}`}
-                    id={item.id}
-                    type={isTv ? "tv" : "movie"}
-                    title={item.name || item.title || "Sem título"}
-                    posterPath={item.poster_path}
-                    rating={item.vote_average}
-                    badge={isTv ? "Série" : "Filme"}
-                    subtitle={year || undefined}
-                  />
-                );
-              })}
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {(searchData?.results || []).map((item) => {
+                  const isTv = item.media_type === "tv";
+                  const year = (item.first_air_date || item.release_date || "").slice(0, 4);
+                  return (
+                    <MediaCard
+                      key={`${item.media_type}-${item.id}`}
+                      id={item.id}
+                      type={isTv ? "tv" : "movie"}
+                      title={item.name || item.title || "Sem título"}
+                      posterPath={item.poster_path}
+                      rating={item.vote_average}
+                      badge={isTv ? "Série" : "Filme"}
+                      subtitle={year || undefined}
+                    />
+                  );
+                })}
+              </div>
+              {renderPagination(
+                searchData?.page || page,
+                searchData?.totalPages || 1,
+                searchFetching
+              )}
+            </>
           )}
         </section>
       ) : hasFilters ? (
         <section>
-          <h2 className="mb-4 text-base font-bold text-white">
-            {discoverType === "tv" ? "Séries" : "Filmes"} filtrados
-          </h2>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h2 className="text-base font-bold text-white">
+              {discoverType === "tv" ? "Séries" : "Filmes"} filtrados
+            </h2>
+            {discoverData?.totalResults ? (
+              <span className="text-xs text-zinc-400">
+                {discoverData.totalResults.toLocaleString("pt-BR")} título(s)
+              </span>
+            ) : null}
+          </div>
           {discoverLoading ? (
             <div className="flex items-center justify-center py-16 text-zinc-400">
               <Loader2 className="mr-2 h-5 w-5 animate-spin text-[#F5C518]" />
@@ -313,19 +399,26 @@ export default function ExplorarPage() {
               Nenhum título encontrado para essa combinação de filtros.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {(discoverData?.results || []).map((item) => (
-                <MediaCard
-                  key={item.id}
-                  id={item.id}
-                  type={discoverType}
-                  title={item.name || item.title || "Sem título"}
-                  posterPath={item.poster_path}
-                  rating={item.vote_average}
-                  subtitle={(item.first_air_date || item.release_date || "").slice(0, 4)}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {(discoverData?.results || []).map((item) => (
+                  <MediaCard
+                    key={item.id}
+                    id={item.id}
+                    type={discoverType}
+                    title={item.name || item.title || "Sem título"}
+                    posterPath={item.poster_path}
+                    rating={item.vote_average}
+                    subtitle={(item.first_air_date || item.release_date || "").slice(0, 4)}
+                  />
+                ))}
+              </div>
+              {renderPagination(
+                discoverData?.page || page,
+                discoverData?.totalPages || 1,
+                discoverFetching
+              )}
+            </>
           )}
         </section>
       ) : trendingLoading ? (
